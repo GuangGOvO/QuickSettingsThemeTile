@@ -1,0 +1,17 @@
+{
+  "version": "0.3.0-native",
+  "validatedOn": "2026-10-06",
+  "windowsBuild": "26300.9457",
+  "architecture": "x64",
+  "installUninstallReenablePassed": true,
+  "repeatTaskResult": 0,
+  "duplicateSessionCreated": false,
+  "setupAndLoaderExited": true,
+  "themeAndOriginalOrderPreserved": true,
+  "functionalUninstallPassed": true,
+  "mappedDllCleanupDeferred": true,
+  "backendTransactionChecksPassed": 12,
+  "finalVisualAndInteractionAcceptance": "pending",
+  "actualLogonTested": false,
+  "actualRebootTested": false
+}
