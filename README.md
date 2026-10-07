@@ -2,11 +2,13 @@
 
 在 Windows 11 原生快速设置中添加“深色模式”磁贴。沿用系统拖动、分页和磁贴模板，点击同时切换系统与应用的浅色/深色主题。
 
-**0.3.0-native 是预发布验证版，仅适配 Windows 11 x64、构建 26300.9457 对应的 ControlCenter.dll。安装版最终外观和交互、实际注销登录与重启恢复仍未完成验收。**
+**0.3.1-native 是预发布验证版，仅适配 Windows 11 x64、构建 26300.9457 对应的 ControlCenter.dll。此公开包已重新构建并通过后端检查，尚未实际安装验收；现场安装生命周期证据来自 0.3.0。最终外观和交互、实际注销登录与重启恢复仍未完成验收。**
 
 ## 下载与使用
 
 从 [Releases](https://github.com/GuangGOvO/QuickSettingsThemeTile/releases) 下载 `ThemeTileSetup.exe`，或下载包含工具、说明、许可证和对应源码的 Windows ZIP。
+
+当前预发布工具未进行代码签名，下载附件可用同页的 `SHA256SUMS.txt` 核对。
 
 1. 双击 `ThemeTileSetup.exe`，选择“启用功能”。无需管理员权限。
 2. 操作完成后关闭工具，打开任务栏右下角的快速设置。
@@ -14,6 +16,8 @@
 4. 删除功能时再次打开工具，选择“卸载功能”。当前主题和其他磁贴排列会保留。
 
 工具使用原生 Windows 对话框，只提供启用、卸载和取消。启用后可以关闭、移动或删除安装工具；日常使用不依赖该工具运行。
+
+从现场测试版 0.3.0 升级时，先用旧版工具卸载功能，再用新版启用。新版使用独立组件目录和产品 CLSID。旧版已映射的文件仍需宿主正常退出后用旧版工具清理；新版卸载器只清理自己的组件目录。
 
 ## 运行方式
 
@@ -27,8 +31,8 @@
 %LOCALAPPDATA%\Packages\Microsoft.Windows.ShellExperienceHost_cw5n1h2txyewy\LocalState\QuickSettingsThemeTile\
     enabled.cfg
     placement.json
-    runtime\0.3.0-native\ThemeTile.dll
-    runtime\0.3.0-native\ThemeTileLoader.exe
+    runtime\0.3.1-native\ThemeTile.dll
+    runtime\0.3.1-native\ThemeTileLoader.exe
 ```
 
 任务名称为 `QuickSettingsThemeTile-<当前用户 SID>`。位置文件保存前后相邻行动和索引；原生列表继续负责实际拖动。
@@ -47,7 +51,7 @@
 
 ## 验证状态
 
-2026-10-06 的现场检查通过了安装、重复任务去重、功能卸载、再次启用，以及工具和加载程序退出。此前原型的首页显示、原生拖动、重开保留和真实主题切换得到人工确认；这些结果不能代替最终安装版交互验收。
+2026-10-06 的 0.3.0 现场检查通过了安装、重复任务去重、功能卸载、再次启用，以及工具和加载程序退出。0.3.1 使用相对路径构建，更新了版本、目录和产品 CLSID；主题和磁贴逻辑保持一致，产品构建及 12 项后端检查通过，但未实际安装。此前原型的首页显示、原生拖动、重开保留和真实主题切换得到人工确认；这些结果不能代替公开包的安装及最终交互验收。
 
 详见 [验证记录](docs/validation.md)。安装器的活动会话状态不等同于按钮实际显示或所有输入方式通过测试。
 
