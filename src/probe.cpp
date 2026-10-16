@@ -264,9 +264,11 @@ void InstallNativeAction(wx::FrameworkElement const& element) {
     if (!module) { Log(L"PROTOTYPE REFUSED: no ControlCenter module"); return; }
     auto dos=reinterpret_cast<IMAGE_DOS_HEADER*>(module);
     auto nt=reinterpret_cast<IMAGE_NT_HEADERS64*>(reinterpret_cast<std::byte*>(module)+dos->e_lfanew);
-    if (nt->FileHeader.TimeDateStamp!=0xf0b032a1 || nt->OptionalHeader.SizeOfImage!=0x3d3000) {
+    auto profile=native_abi::ProfileForImage(nt->FileHeader.Machine,nt->FileHeader.TimeDateStamp,nt->OptionalHeader.SizeOfImage);
+    if (!profile) {
         Log(L"PROTOTYPE REFUSED: unverified ControlCenter image"); return;
     }
+    auto initializeRva=profile->initializeRva;
     auto group=element.DataContext();
     auto groupName=Property(group,L"Name",L"PROTOTYPE GROUP",false);
     if (!groupName || winrt::unbox_value<winrt::hstring>(groupName)!=L"Toggles") { Log(L"PROTOTYPE REFUSED: wrong group"); return; }
@@ -320,7 +322,7 @@ void InstallNativeAction(wx::FrameworkElement const& element) {
     handler.SetValue(model,winrt::box_value(false));
     auto initialize=model.as<NativeModelInitialize>();
     auto initializeTable=*reinterpret_cast<void***>(initialize.get());
-    if (initializeTable[6]!=reinterpret_cast<std::byte*>(module)+0xac6a0) { Log(L"PROTOTYPE REFUSED: Initialize ABI fingerprint mismatch"); return; }
+    if (initializeTable[6]!=reinterpret_cast<std::byte*>(module)+initializeRva) { Log(L"PROTOTYPE REFUSED: Initialize ABI fingerprint mismatch"); return; }
     winrt::check_hresult(initialize->Initialize());
     Model(L"NATIVE THEME MODEL",model);
     auto applicable=Property(model,L"IsApplicable",L"NATIVE THEME MODEL");

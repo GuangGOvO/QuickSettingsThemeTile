@@ -7,6 +7,7 @@
 #include <bcrypt.h>
 #include <sddl.h>
 #include <winrt/base.h>
+#include "compatibility.h"
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -14,7 +15,7 @@
 
 namespace product {
 constexpr wchar_t SettingsKey[]=L"Software\\QuickSettingsThemeTile";
-constexpr wchar_t Version[]=L"0.3.1-native";
+constexpr wchar_t Version[]=L"0.3.3-native";
 constexpr wchar_t ActivePrefix[]=L"Local\\QuickSettingsThemeTile.Active.";
 constexpr wchar_t StopPrefix[]=L"Local\\QuickSettingsThemeProbe.Stop.";
 constexpr wchar_t DllName[]=L"ThemeTile.dll";
@@ -97,26 +98,15 @@ inline bool Stop(DWORD pid) {
     auto event=OpenEventW(EVENT_MODIFY_STATE,FALSE,(std::wstring(StopPrefix)+std::to_wstring(pid)).c_str());
     if (!event) return false; bool success=SetEvent(event); CloseHandle(event); return success;
 }
-inline bool Compatible() {
-    wchar_t system[MAX_PATH]{}; if (!GetSystemDirectoryW(system,MAX_PATH)) return false;
-    auto path=std::filesystem::path(system)/L"ControlCenter.dll";
-    auto file=CreateFileW(path.c_str(),GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,0,nullptr);
-    if (file==INVALID_HANDLE_VALUE) return false;
-    BCRYPT_ALG_HANDLE algorithm=nullptr; BCRYPT_HASH_HANDLE hash=nullptr;
-    bool ok=BCryptOpenAlgorithmProvider(&algorithm,BCRYPT_SHA256_ALGORITHM,nullptr,0)>=0;
-    DWORD length=0,returned=0;
-    if (ok) ok=BCryptGetProperty(algorithm,BCRYPT_OBJECT_LENGTH,reinterpret_cast<BYTE*>(&length),sizeof(length),&returned,0)>=0;
-    std::vector<BYTE> object(length); BYTE digest[32]{}; BYTE buffer[65536]{}; DWORD read=0;
-    if (ok) ok=BCryptCreateHash(algorithm,&hash,object.data(),length,nullptr,0,0)>=0;
-    while (ok) {
-        if (!ReadFile(file,buffer,sizeof(buffer),&read,nullptr)) { ok=false; break; }
-        if (!read) break;
-        ok=BCryptHashData(hash,buffer,read,0)>=0;
+inline compatibility::Result InspectCompatibility() { return compatibility::InspectSystemDll(); }
+inline bool Compatible() { return InspectCompatibility().supported(); }
+inline std::wstring SupportedProfilesSummary() {
+    std::wstring result;
+    for (auto const& profile : compatibility::Profiles) {
+        if (!result.empty()) result+=L"、";
+        result+=profile.displayName;
     }
-    if (ok) ok=BCryptFinishHash(hash,digest,sizeof(digest),0)>=0;
-    if (hash) BCryptDestroyHash(hash); if (algorithm) BCryptCloseAlgorithmProvider(algorithm,0); CloseHandle(file);
-    static constexpr BYTE expected[]={0x3e,0x9a,0x30,0xbd,0x1e,0x92,0x22,0x0b,0xae,0xeb,0xa9,0x0c,0xd0,0xac,0x40,0x9a,0xe5,0x41,0xc6,0x50,0x01,0x9a,0xd7,0xc8,0x0a,0xec,0x97,0xda,0xf3,0x9c,0x32,0x61};
-    return ok && memcmp(digest,expected,sizeof(digest))==0;
+    return result;
 }
 inline void Output(std::wstring const& text) {
     auto utf8=winrt::to_string(text+L"\n"); DWORD written=0;

@@ -165,12 +165,31 @@ bool Uninstall() {
 void Status() {
     using namespace winrt::Windows::Data::Json;
     auto service=Scheduler(); auto folder=Folder(service.get()); auto task=Existing(folder.get());
+    auto compatibility=product::InspectCompatibility();
+    auto hostVersion=compatibility::ReadHostVersion();
     JsonObject json; json.SetNamedValue(L"enabled",JsonValue::CreateBooleanValue(product::Enabled()!=0));
-    json.SetNamedValue(L"supported",JsonValue::CreateBooleanValue(product::Compatible()));
+    json.SetNamedValue(L"supported",JsonValue::CreateBooleanValue(compatibility.supported()));
+    json.SetNamedValue(L"compatibilityStatus",JsonValue::CreateStringValue(compatibility::StatusName(compatibility.status)));
+    json.SetNamedValue(L"profileId",JsonValue::CreateStringValue(compatibility.profile?compatibility.profile->id:L""));
+    json.SetNamedValue(L"windowsBuild",JsonValue::CreateNumberValue(hostVersion.build));
+    json.SetNamedValue(L"windowsUbr",JsonValue::CreateNumberValue(hostVersion.ubr));
+    json.SetNamedValue(L"windowsVersionAvailable",JsonValue::CreateBooleanValue(hostVersion.valid));
+    json.SetNamedValue(L"windowsUbrAvailable",JsonValue::CreateBooleanValue(hostVersion.hasUbr));
+    json.SetNamedValue(L"controlCenterSha256",JsonValue::CreateStringValue(compatibility::Hex(compatibility.facts.sha256)));
+    json.SetNamedValue(L"peMachine",JsonValue::CreateStringValue(compatibility::HexValue(compatibility.facts.machine)));
+    json.SetNamedValue(L"peTimestamp",JsonValue::CreateStringValue(compatibility::HexValue(compatibility.facts.timestamp)));
+    json.SetNamedValue(L"imageSize",JsonValue::CreateStringValue(compatibility::HexValue(compatibility.facts.imageSize)));
+    json.SetNamedValue(L"pdbGuid",JsonValue::CreateStringValue(compatibility.facts.hasPdbIdentity?compatibility::PdbGuidText(compatibility.facts.pdbGuid):L""));
+    json.SetNamedValue(L"pdbAge",JsonValue::CreateNumberValue(compatibility.facts.pdbAge));
+    json.SetNamedValue(L"compatibilityError",JsonValue::CreateNumberValue(compatibility.error));
     json.SetNamedValue(L"taskRegistered",JsonValue::CreateBooleanValue(task && Owned(task.get())));
-    json.SetNamedValue(L"runtimePath",JsonValue::CreateStringValue(product::Runtime().wstring()));
-    JsonArray active; for (auto pid : product::Hosts()) if (product::Active(pid)) active.Append(JsonValue::CreateNumberValue(pid));
-    json.SetNamedValue(L"activeShellPids",active); product::Output(std::wstring(json.Stringify()));
+    auto runtime=product::Runtime();
+    auto runtimeInstalled=GetFileAttributesW((runtime/product::DllName).c_str())!=INVALID_FILE_ATTRIBUTES &&
+        GetFileAttributesW((runtime/product::HelperName).c_str())!=INVALID_FILE_ATTRIBUTES;
+    json.SetNamedValue(L"runtimeInstalled",JsonValue::CreateBooleanValue(runtimeInstalled));
+    bool shellSessionActive=false; for (auto pid : product::Hosts()) shellSessionActive=shellSessionActive || product::Active(pid);
+    json.SetNamedValue(L"shellSessionActive",JsonValue::CreateBooleanValue(shellSessionActive));
+    product::Output(std::wstring(json.Stringify()));
 }
 }
 
@@ -189,10 +208,13 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
         if (!command.empty()) winrt::throw_hresult(E_INVALIDARG);
         INITCOMMONCONTROLSEX controls{sizeof(controls),ICC_STANDARD_CLASSES}; InitCommonControlsEx(&controls);
         TASKDIALOG_BUTTON buttons[]={{101,L"启用功能"},{102,L"卸载功能"}};
+        auto initialCompatibility=product::InspectCompatibility();
+        auto content=L"磁贴支持原生拖动。启用后可以关闭此工具，无需常驻安装工具或自建服务。\n\n已验证档案："+product::SupportedProfilesSummary();
+        if (!initialCompatibility.supported()) content+=L"\n当前系统："+std::wstring(compatibility::StatusName(initialCompatibility.status))+L"（请勿强制接入未知系统组件）";
         TASKDIALOGCONFIG dialog{sizeof(dialog)}; dialog.hInstance=instance;
         dialog.dwFlags=TDF_ALLOW_DIALOG_CANCELLATION|TDF_SIZE_TO_CONTENT; dialog.dwCommonButtons=TDCBF_CANCEL_BUTTON;
         dialog.pszWindowTitle=L"快速设置主题磁贴"; dialog.pszMainInstruction=product::Enabled()?L"主题磁贴已启用":L"添加浅色 / 深色主题磁贴";
-        dialog.pszContent=L"磁贴支持原生拖动。启用后可以关闭此工具，无需常驻安装工具或自建服务。\n\n当前版本仅适配 Windows 11 26300.9457。";
+        dialog.pszContent=content.c_str();
         dialog.cButtons=ARRAYSIZE(buttons); dialog.pButtons=buttons; dialog.nDefaultButton=product::Enabled()?IDCANCEL:101;
         int selected=0; check_hresult(TaskDialogIndirect(&dialog,&selected,nullptr,nullptr));
         if (selected==101) {

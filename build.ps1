@@ -1,4 +1,4 @@
-param([ValidateSet('symbols','probe','backend','product','all')][string]$Target = 'all', [ValidatePattern('^[a-zA-Z0-9-]+$')][string]$BuildName = 'bin', [switch]$NativeTile, [switch]$Functional, [switch]$CleanupTile, [switch]$ResidentTile, [switch]$KeepAttached)
+param([ValidateSet('symbols','probe','backend','product','compatibility','pdb-inspector','all')][string]$Target = 'all', [ValidatePattern('^[a-zA-Z0-9-]+$')][string]$BuildName = 'bin', [switch]$NativeTile, [switch]$Functional, [switch]$CleanupTile, [switch]$ResidentTile, [switch]$KeepAttached)
 $ErrorActionPreference = 'Stop'
 if ($KeepAttached) { $ResidentTile=$true }
 if ($CleanupTile -and ($NativeTile -or $Functional -or $ResidentTile)) { throw 'CleanupTile cannot be combined with insertion modes.' }
@@ -42,6 +42,20 @@ try {
         if ($LASTEXITCODE) { throw 'Theme backend compilation failed.' }
         & $compiler /nologo /utf-8 /std:c++20 /EHsc /W4 /MD /DUNICODE /D_UNICODE '..\src\backend-tests.cpp' /Fe:backend-tests.exe /link advapi32.lib user32.lib /DYNAMICBASE /NXCOMPAT
         if ($LASTEXITCODE) { throw 'Theme backend check compilation failed.' }
+    }
+    if ($Target -in 'all','compatibility') {
+        & $compiler /nologo /utf-8 /std:c++20 /EHsc /W4 /MT /DUNICODE /D_UNICODE '..\src\compatibility-tests.cpp' /Fe:compatibility-tests.exe /link bcrypt.lib ole32.lib /DYNAMICBASE /NXCOMPAT
+        if ($LASTEXITCODE) { throw 'Compatibility tests compilation failed.' }
+        & $compiler /nologo /utf-8 /std:c++20 /EHsc /W4 /MT /DUNICODE /D_UNICODE '..\src\compat-scan.cpp' /Fe:compat-scan.exe /link bcrypt.lib ole32.lib advapi32.lib /SUBSYSTEM:CONSOLE /DYNAMICBASE /NXCOMPAT
+        if ($LASTEXITCODE) { throw 'Compatibility scanner compilation failed.' }
+        & '.\compatibility-tests.exe'
+        if ($LASTEXITCODE) { throw 'Compatibility tests failed.' }
+    }
+    if ($Target -eq 'pdb-inspector') {
+        $diaRoot=Join-Path $vs 'DIA SDK'
+        if (!(Test-Path -LiteralPath (Join-Path $diaRoot 'include\dia2.h')) -or !(Test-Path -LiteralPath (Join-Path $diaRoot 'lib\amd64\diaguids.lib'))) { throw 'Visual Studio DIA SDK not found.' }
+        & $compiler /nologo /utf-8 /std:c++20 /EHsc /W4 /MT "/I$(Join-Path $diaRoot 'include')" '..\tools\compat-pdb-inspect.cpp' /Fe:compat-pdb-inspect.exe /link "/LIBPATH:$(Join-Path $diaRoot 'lib\amd64')" diaguids.lib ole32.lib oleaut32.lib advapi32.lib dbghelp.lib /DYNAMICBASE /NXCOMPAT
+        if ($LASTEXITCODE) { throw 'Compatibility PDB inspector compilation failed.' }
     }
     if ($Target -in 'all','probe') {
         $prototypeDefines = @()
