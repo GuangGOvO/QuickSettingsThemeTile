@@ -27,6 +27,20 @@ int main() {
             require(compatibility::Match(facts).status==compatibility::Status::MetadataMismatch,"missing required PDB identity rejected");
         }
     }
+    auto candidate=compatibility::FindById(L"win11-x64-26100.4946");
+    require(candidate!=nullptr,"26100.4946 beta candidate is present");
+    require(compatibility::Hex(candidate->sha256)==L"C1786EC32A32F3815A92F2895E60FDE938033BB24007AD6AF11856C9C985491E","26100.4946 exact candidate hash");
+    require(candidate->machine==IMAGE_FILE_MACHINE_AMD64 && candidate->timestamp==0xdcba0b0b && candidate->imageSize==0x3b8000,"26100.4946 PE fingerprint");
+    GUID candidatePdb{0xeafc8570,0xd54b,0x672b,{0x78,0x15,0xf7,0x6b,0x54,0xd8,0x40,0x31}};
+    require(candidate->requirePdbIdentity && candidate->pdbAge==1 && std::memcmp(&candidate->pdbGuid,&candidatePdb,sizeof(GUID))==0,"26100.4946 matching PDB identity");
+    require(candidate->initializeRva==0xacfb0,"26100.4946 Initialize slot target RVA");
+    auto gaCandidate=compatibility::FindById(L"win11-x64-26200.9168");
+    require(gaCandidate!=nullptr,"26200.9168 beta candidate is present");
+    require(compatibility::Hex(gaCandidate->sha256)==L"E35DD0B8940BC97DA379C6B3E6A5C5F6D1D6CCBDEE2D062D660148C30FCF37AF","26200.9168 exact candidate hash");
+    require(gaCandidate->machine==IMAGE_FILE_MACHINE_AMD64 && gaCandidate->timestamp==0x381c21e7 && gaCandidate->imageSize==0x3d3000,"26200.9168 PE fingerprint");
+    GUID gaCandidatePdb{0x37209f4e,0x83c8,0x8201,{0x16,0x5d,0x6c,0x7e,0x22,0x01,0xb6,0x71}};
+    require(gaCandidate->requirePdbIdentity && gaCandidate->pdbAge==1 && std::memcmp(&gaCandidate->pdbGuid,&gaCandidatePdb,sizeof(GUID))==0,"26200.9168 matching PDB identity");
+    require(gaCandidate->initializeRva==0xac690,"26200.9168 Initialize slot target RVA");
     std::array<BYTE,0x400> image{};
     IMAGE_DOS_HEADER dos{}; dos.e_magic=IMAGE_DOS_SIGNATURE; dos.e_lfanew=0x80;
     std::memcpy(image.data(),&dos,sizeof(dos));

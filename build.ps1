@@ -1,4 +1,4 @@
-param([ValidateSet('symbols','probe','backend','product','compatibility','pdb-inspector','all')][string]$Target = 'all', [ValidatePattern('^[a-zA-Z0-9-]+$')][string]$BuildName = 'bin', [switch]$NativeTile, [switch]$Functional, [switch]$CleanupTile, [switch]$ResidentTile, [switch]$KeepAttached)
+param([ValidateSet('symbols','probe','backend','product','compatibility','abi-probe','pdb-inspector','all')][string]$Target = 'all', [ValidatePattern('^[a-zA-Z0-9-]+$')][string]$BuildName = 'bin', [switch]$NativeTile, [switch]$Functional, [switch]$CleanupTile, [switch]$ResidentTile, [switch]$KeepAttached)
 $ErrorActionPreference = 'Stop'
 if ($KeepAttached) { $ResidentTile=$true }
 if ($CleanupTile -and ($NativeTile -or $Functional -or $ResidentTile)) { throw 'CleanupTile cannot be combined with insertion modes.' }
@@ -50,6 +50,10 @@ try {
         if ($LASTEXITCODE) { throw 'Compatibility scanner compilation failed.' }
         & '.\compatibility-tests.exe'
         if ($LASTEXITCODE) { throw 'Compatibility tests failed.' }
+    }
+    if ($Target -eq 'abi-probe') {
+        & $compiler /nologo /utf-8 /std:c++20 /EHsc /W4 /MT /DUNICODE /D_UNICODE '..\src\compat-abi-probe.cpp' /Fe:compat-abi-probe.exe /link windowsapp.lib ole32.lib bcrypt.lib /SUBSYSTEM:CONSOLE /DYNAMICBASE /NXCOMPAT
+        if ($LASTEXITCODE) { throw 'Compatibility ABI probe compilation failed.' }
     }
     if ($Target -eq 'pdb-inspector') {
         $diaRoot=Join-Path $vs 'DIA SDK'

@@ -2,13 +2,13 @@
 
 在 Windows 11 原生快速设置中添加“深色模式”磁贴。沿用系统拖动、分页和磁贴模板，点击同时切换系统与应用的浅色/深色主题。
 
-**0.3.3-native Beta 1 是供手动验收的预发布版：将 DLL 哈希、PE 元数据、PDB 标识与 ABI 入口统一到一张档案表，新增开发用 `compat-scan.exe`，并扩展 `--status` 的兼容诊断字段。它只包含两个已验证档案（26300.9457、26300.9711），不代表已适配所有 Windows 11 x64 正式版构建。本次通过了本地构建、17 项兼容性检查和 12 项后端事务检查；Beta 安装器尚未安装验收，请手动复验磁贴显示、双向切换、拖动和位置保持。**
+**0.3.4-native Beta 1 扩展了两个精确 DLL 指纹：Windows 11 build 26100.4946，以及 KB5121003 共用的 build 26100.9168 / 26200.9168 组件。两者均通过隔离进程中的激活、IID、QueryInterface 和 Initialize 槽检查；目标构建的 Shell 接入和磁贴交互仍待手动验收，不代表已适配所有 Windows 11 x64 正式版构建。**
 
 ## 下载与使用
 
 从 [Releases](https://github.com/GuangGOvO/QuickSettingsThemeTile/releases) 下载对应版本的 `ThemeTileSetup.exe`。GitHub 会为每个版本 tag 自动提供对应的源代码 ZIP；旧版本也可能有额外的 Windows ZIP。
 
-稳定版仍是 0.3.1-native；当前 Beta 1 首次加入 build 26300.9711 的兼容档案，并等待手动复验。未列入档案的系统会被拒绝接入。
+稳定版仍是 0.3.1-native；当前 Beta 1 包含四个精确 DLL 指纹，其中 26100.4946 和 26100/26200.9168 是待目标机验收的 Beta 档案。未列入档案的系统会被拒绝接入。
 
 当前预发布工具未进行代码签名，下载附件可用同页的 `SHA256SUMS.txt` 核对。
 
@@ -20,6 +20,8 @@
 工具使用原生 Windows 对话框，只提供启用、卸载和取消。启用后可以关闭、移动或删除安装工具；日常使用不依赖该工具运行。
 
 从现场测试版 0.3.0 升级时，先用旧版工具卸载功能，再用新版启用。新版使用独立组件目录和产品 CLSID。旧版已映射的文件仍需宿主正常退出后用旧版工具清理；新版卸载器只清理自己的组件目录。
+
+从 0.3.3-native Beta 升级时也要先运行旧版并选择“卸载功能”，再启用本版。每个版本使用独立的组件目录；卸载时如果 DLL 仍被 Shell 映射，按提示等待宿主退出后再清理。
 
 ## 运行方式
 
@@ -33,22 +35,24 @@
 %LOCALAPPDATA%\Packages\Microsoft.Windows.ShellExperienceHost_cw5n1h2txyewy\LocalState\QuickSettingsThemeTile\
     enabled.cfg
     placement.json
-    runtime\0.3.3-native\ThemeTile.dll
-    runtime\0.3.3-native\ThemeTileLoader.exe
+    runtime\0.3.4-native\ThemeTile.dll
+    runtime\0.3.4-native\ThemeTileLoader.exe
 ```
 
 任务名称为 `QuickSettingsThemeTile-<当前用户 SID>`。位置文件保存前后相邻行动和索引；原生列表继续负责实际拖动。
 
 ## 兼容性与卸载
 
-此版本使用 Windows Shell 内部模型与版本相关 ABI，目前只允许以下两种 `ControlCenter.dll` SHA-256：
+此版本使用 Windows Shell 内部模型与版本相关 ABI，目前仅允许以下四个 `ControlCenter.dll` SHA-256：
 
 ```text
 3E9A30BD1E92220BAEEBA90CD0AC409AE541C650019AD7C80AEC97DAF39C3261
 0A9A84B0B7ED6110A410BD76150CE0DA04DC29B901838155AB7CE2D8BF2FFB51
+C1786EC32A32F3815A92F2895E60FDE938033BB24007AD6AF11856C9C985491E
+E35DD0B8940BC97DA379C6B3E6A5C5F6D1D6CCBDEE2D062D660148C30FCF37AF
 ```
 
-这两个档案以首次 ABI 验证构建命名；运行时按 DLL 哈希、PE 指纹和所需的 PDB 身份匹配，不按主机 build 数字单独放行。Winbindex 批量索引还把这两份 DLL 字节关联到部分 26100/26200 更新，但这些主机尚未实测。2026-10-16 批量扫描的其他 36 个不同哈希仍拒绝接入。开发用 `.\\compat-check-033\\compat-scan.exe` 可检查当前系统 DLL 或离线包文件；扫描结果不会自动成为受支持档案。详细覆盖和验收边界见 [兼容矩阵](docs/compatibility-matrix.md) 与[候选发现流程](docs/compatibility-sources.md)；当前 26300.9711 证据见 [兼容性记录](docs/compatibility-26300.9711.md)。
+前两个档案分别来自 build 26300.9457 和 26300.9711。第三、第四个是待 Shell 实测的精确候选，分别对应 26100.4946 和 KB5121003 的 26100/26200.9168。运行时按 DLL 哈希、PE 指纹和所需的 PDB 身份匹配，不按主机 build 数字单独放行。Winbindex 快照包含 38 个不同哈希；目前四个指纹可识别，其余 34 个仍被拒绝。开发用 `compat-scan.exe` 可检查当前系统 DLL 或离线包文件；扫描结果不会自动成为受支持档案。详细覆盖和验收边界见 [兼容矩阵](docs/compatibility-matrix.md)、[26100.4946 证据](docs/compatibility-26100.4946.md)、[26100/26200.9168 证据](docs/compatibility-26200.9168.md) 与[候选发现流程](docs/compatibility-sources.md)。
 
 开发者可用 [候选发现与扫描流程](docs/compatibility-sources.md) 查询 Winbindex 的 x64 元数据、从微软公共符号服务器下载并校验指定 DLL/PDB，或扫描从离线更新包提取的 DLL。公开 PDB 检查只输出匹配身份的符号线索；所有未知哈希继续拒绝加载，流程不会修改档案表或把候选加载进 Shell。
 
@@ -56,7 +60,7 @@
 
 ## 验证状态
 
-2026-10-06 的 0.3.0 现场检查通过了安装、重复任务去重、功能卸载和再次启用。0.3.2 为 build 26300.9711 增加精确兼容配置，0.3.3 新增统一档案检查、候选扫描和 DIA PDB 比较工具。兼容性单元检查 17 项通过；当前系统 DLL 扫描与 Beta `--status` 均识别为 `win11-x64-26300.9711`。GA 候选 26200.9168 的三个相关公开符号集合与现有档案相同，但 PDB 不含可用类布局；因此仍拒绝加载。26H1 版本级别为 GA，但 x64 更新包类别与版本渠道信息不一致；28000.3231 的相关公开符号集合也与现有档案有差异，仍保持拒绝。Beta `--status` 是只读检查，没有安装 Beta、操作或重启 Shell；请手动复验磁贴显示、切换、拖动和位置保持。
+0.3.4-native Beta 1 将 26100.4946 与 26100/26200.9168 精确 DLL 指纹纳入候选档案。两份候选均通过隔离进程激活、IID、QueryInterface 和 Initialize 槽位检查，但探针运行于 build 26300.9711，未调用 Initialize 或连接 ShellHost；目标机的磁贴显示、切换、拖动和恢复仍待实测。详见 [验证记录](docs/validation.md) 和 [兼容矩阵](docs/compatibility-matrix.md)。
 
 详见 [验证记录](docs/validation.md)。安装器的活动会话状态不等同于按钮实际显示或所有输入方式通过测试。
 
@@ -91,6 +95,7 @@
 - `src/theme-backend.h`：主题读写、回滚、读回与通知。
 - `src/tile-order.h`：位置保存和恢复。
 - `src/product-*.cpp`：启用/卸载工具与短时加载程序。
+- `src/compat-abi-probe.cpp`：开发用隔离进程 ABI 探针；不连接 Shell，也不调用 Initialize。
 - `src/backend-tests.cpp`：隔离的事务检查。
 
 GPL-3.0，见 [LICENSE](LICENSE) 与 [第三方说明](THIRD-PARTY-NOTICES.md)。这是非官方实验工具；没有分发微软系统 DLL 或符号文件。

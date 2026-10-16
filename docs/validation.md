@@ -1,6 +1,6 @@
 # 公开版本验证记录
 
-现场验证日期：2026-10-06（0.3.0）。公开包构建日期：2026-10-07（0.3.1）。本地兼容性构建日期：2026-10-16（0.3.2、0.3.3）。下表区分旧原型、现场安装版、本地兼容构建和仍待验收项目。错误 HRESULT 与处理逻辑保留，公开构建的 C++/WinRT 异常不携带源文件名和行号。
+现场验证日期：2026-10-06（0.3.0）。公开包构建日期：2026-10-07（0.3.1）。本地兼容性构建日期：2026-10-16（0.3.2、0.3.3、0.3.4 Beta）。下表区分旧原型、现场安装版、本地兼容构建和仍待验收项目。错误 HRESULT 与处理逻辑保留，公开构建的 C++/WinRT 异常不携带源文件名和行号。
 
 ## 检查结果
 
@@ -25,17 +25,27 @@
 | 公共候选索引 | 2026-10-16 Winbindex 快照：38 个 AMD64 哈希、84 条更新/组件关联；数据不证明 GA 状态或 ABI 安全 |
 | 26H1 x64 渠道分类 | 微软版本页列 26H1 为 GA；KB5127646 的 x64 更新目录项标记 Insider Pre-Release，ARM64 项标记为常规安全更新；当前按未决范围跟踪 |
 | 26H1 x64 DLL 符号比较 | 28000.3231 候选 PDB 身份核对通过；三个相关公开符号集合与 26300.9711 有差异，双方均无可枚举 UDT；候选仍为 `unknown_binary` |
-| Winbindex 全候选扫描 | 38/38 DLL 下载哈希与索引匹配；2 个匹配现有档案，36 个返回 `unknown_binary`，0 个取件失败；没有新增档案或加载 Shell |
-| 微软公共 PDB 候选审查 | GA 候选 26200.9168 的 PDB GUID/Age 与 DLL CodeView 记录一致；三个相关公开符号集合与现有档案相同，但没有 UDT 布局；仍未知且拒绝加载 |
+| Winbindex 全候选扫描 | 38/38 DLL 下载哈希与索引匹配；初始扫描 2 个匹配、36 个未知；增加两个 Beta 指纹后共有 4 个档案命中、34 个仍为 `unknown_binary`，0 个取件失败 |
+| 微软公共 PDB 候选审查 | GA 候选 26200.9168 的 PDB GUID/Age 与 DLL CodeView 记录一致；三个相关公开符号集合与现有档案相同，但没有 UDT 布局；隔离 ABI 探针通过后作为 Beta 档案加入 |
+| 26100.4946 精确候选 | DLL SHA-256 与用户报告的系统 DLL 和 Winbindex 索引相同；PE/PDB 指纹、`IQuickActionViewModel` IID、vtable slot 6 / Initialize RVA 通过静态核验 |
+| 26100.4946 隔离 ABI 探针 | 激活、GetIids、QueryInterface、slot 6 RVA 均通过；运行宿主为 build 26300.9711，未调用 Initialize 或连接 ShellHost，不能替代目标 build 测试 |
+| 26100/26200.9168 精确候选 | KB5121003 关联的共享 DLL SHA-256、PE/PDB 指纹通过；`Get-AuthenticodeSignature` 返回 Valid，签名者为 Microsoft Windows |
+| 26100/26200.9168 隔离 ABI 探针 | 激活、GetIids、QueryInterface、slot 6 `0xAC690` 均通过；运行宿主为 build 26300.9711，未调用 Initialize 或连接 ShellHost |
+| 0.3.4 Beta 兼容性检查 | 39 项 profile / PE 检查通过；12 项主题后端事务检查通过，未修改实际主题 |
+| 26100.4946 Beta Shell UI | 待用户在精确目标 build 安装验收 tile 显示、双向主题切换、拖动顺序、Shell 重建和卸载 |
+| 26100/26200.9168 Beta Shell UI | 待相应 24H2 / 25H2 目标 build 安装验收；同一 DLL hash 仍不能替代不同 Shell 环境的运行检查 |
 | 多 build 候选解析 | 26100/26200/26300.9711 映射到同一 `.9711` 档案哈希；26100/26200.9457 和 .9445 更新映射到 `.9457` 档案哈希；只是二进制关联，24H2/25H2 主机未验收 |
 | 扫描时签名状态 | 扫描主机对 4 个候选返回 Authenticode `Valid`，34 个返回 `NotSigned`；未获取或验证更新包 `.cat`，因此不能据此判定包无效 |
 | 离线包本地扫描入口 | `-DllPath` / `-DllDirectory` 已实现；其他候选 build 的离线提取包尚未实际扫描 |
-| Profile / PE parser tests | 17 项通过：已知档案、未知哈希、PE 元数据偏差、PDB 偏差、有效/截断/损坏 PE |
+| Profile / PE parser tests | 39 项通过：四个已知档案、未知哈希、PE/PDB 元数据偏差、有效/截断/损坏 PE 和两个 Beta 候选的精确指纹断言 |
 | 未知 DLL 拒绝 | 扫描产品安装器返回 `unknown_binary`、`supported:false`，退出码 2；没有进入 Shell |
 | 扩展后的 `--status` | 显示 `supported`、profileId、SHA-256、PE/PDB 元数据及布尔运行状态；不输出本地路径或进程编号 |
 | OS build/UBR 识别 | `RtlGetVersion` 与当前版本 UBR 返回 26300 / 9711 |
-| 全部 Windows 11 x64 正式版覆盖 | 未完成；目前档案表仍只有 26300.9457 和 26300.9711 |
+| 全部 Windows 11 x64 正式版覆盖 | 未完成；两个原始 ABI 基线加两个 Beta 候选共四个 DLL 指纹，其他 34 个 Winbindex 候选仍未知；23H2 及更早版本和精确主机 Shell 行为仍待覆盖 |
 | 当前 QuickAction IID 与初始化槽 | 独立进程激活对象；`QueryInterface` 成功，槽 6 为 `ControlCenter.dll+0xAC420`；未调用 `Initialize` |
+| 26100.4946 真实 DLL 扫描 | 新兼容扫描器把本地缓存候选识别为 `win11-x64-26100.4946`、`supported:true`，SHA-256、PE 和 PDB 指纹全部匹配 |
+| 26100.4946 隔离 ABI 探针 | 激活、IID、QueryInterface 和 slot 6 `0xACFB0` 均通过；探针运行在 26300.9711，不调用 Initialize、不接触 Shell |
+| 26100.4946 产品安装及 Shell 行为 | 待目标机器人工验收；隔离探针通过不能替代快速设置磁贴、点击、拖动、Shell 恢复与卸载测试 |
 | 0.3.2 产品启用 | 构建通过；`--enable` 返回 `enabled:true`、`nativeActive:true`，ShellHost 未重启 |
 | 更新后快速设置磁贴重新显示 | 用户确认已出现 |
 | 0.3.3 Beta `--status` | 新构建的安装器只读识别当前 DLL 为 `win11-x64-26300.9711`；该次检查显示 `runtimeInstalled:false`，没有安装 Beta、操作或重启 Shell，因此不构成安装验收 |
