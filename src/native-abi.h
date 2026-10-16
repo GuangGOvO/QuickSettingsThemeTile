@@ -1,10 +1,9 @@
 #pragma once
 #include <inspectable.h>
 #include "compatibility.h"
-// Partial private interface verified against the ControlCenter PDB and GetIids.
-// Build 26300.9711 was rechecked by isolated WinRT activation and QueryInterface;
-// only the exact DLL fingerprints below are accepted by the product loader.
-struct __declspec(uuid("CA79615D-BFBA-58DC-8D55-741963985C48")) NativeModelInitialize : IInspectable {
+// Partial private interface layout: IInspectable base slots followed by Initialize at slot 6.
+// The IID is profile-specific and must come from exact-candidate ABI screening.
+struct NativeModelInitialize : IInspectable {
     virtual HRESULT STDMETHODCALLTYPE Initialize() = 0; // slot 6
 };
 

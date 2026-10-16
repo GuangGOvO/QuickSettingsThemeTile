@@ -320,10 +320,15 @@ void InstallNativeAction(wx::FrameworkElement const& element) {
     auto handler=type.GetMember(L"IsHandlerRequired");
     if (!handler || handler.IsReadOnly()) { Log(L"PROTOTYPE REFUSED: handler flag member unavailable"); return; }
     handler.SetValue(model,winrt::box_value(false));
-    auto initialize=model.as<NativeModelInitialize>();
-    auto initializeTable=*reinterpret_cast<void***>(initialize.get());
-    if (initializeTable[6]!=reinterpret_cast<std::byte*>(module)+initializeRva) { Log(L"PROTOTYPE REFUSED: Initialize ABI fingerprint mismatch"); return; }
-    winrt::check_hresult(initialize->Initialize());
+    auto modelAbi=reinterpret_cast<::IInspectable*>(winrt::get_abi(model));
+    NativeModelInitialize* initialize=nullptr;
+    auto initializeQuery=modelAbi->QueryInterface(profile->initializeIid,reinterpret_cast<void**>(&initialize));
+    if (FAILED(initializeQuery) || !initialize) { Log(L"PROTOTYPE REFUSED: profile Initialize IID query failed="+compatibility::HexValue(static_cast<uint32_t>(initializeQuery))); return; }
+    auto initializeTable=*reinterpret_cast<void***>(initialize);
+    if (initializeTable[6]!=reinterpret_cast<std::byte*>(module)+initializeRva) { initialize->Release(); Log(L"PROTOTYPE REFUSED: Initialize ABI fingerprint mismatch"); return; }
+    auto initializeResult=initialize->Initialize();
+    initialize->Release();
+    winrt::check_hresult(initializeResult);
     Model(L"NATIVE THEME MODEL",model);
     auto applicable=Property(model,L"IsApplicable",L"NATIVE THEME MODEL");
     if (!applicable || !winrt::unbox_value<bool>(applicable)) { Log(L"PROTOTYPE REFUSED: custom native model is inapplicable"); return; }

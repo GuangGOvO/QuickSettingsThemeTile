@@ -15,7 +15,7 @@
 
 namespace product {
 constexpr wchar_t SettingsKey[]=L"Software\\QuickSettingsThemeTile";
-constexpr wchar_t Version[]=L"0.3.4-native";
+constexpr wchar_t Version[]=L"0.3.5-native";
 constexpr wchar_t ActivePrefix[]=L"Local\\QuickSettingsThemeTile.Active.";
 constexpr wchar_t StopPrefix[]=L"Local\\QuickSettingsThemeProbe.Stop.";
 constexpr wchar_t DllName[]=L"ThemeTile.dll";
@@ -101,12 +101,7 @@ inline bool Stop(DWORD pid) {
 inline compatibility::Result InspectCompatibility() { return compatibility::InspectSystemDll(); }
 inline bool Compatible() { return InspectCompatibility().supported(); }
 inline std::wstring SupportedProfilesSummary() {
-    std::wstring result;
-    for (auto const& profile : compatibility::Profiles) {
-        if (!result.empty()) result+=L"、";
-        result+=profile.displayName;
-    }
-    return result;
+    return std::to_wstring(compatibility::Profiles.size())+L" 个 Windows 11 x64 精确 DLL 指纹";
 }
 inline void Output(std::wstring const& text) {
     auto utf8=winrt::to_string(text+L"\n"); DWORD written=0;

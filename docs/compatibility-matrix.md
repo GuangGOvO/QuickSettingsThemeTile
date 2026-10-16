@@ -1,62 +1,68 @@
-# Windows 11 x64 compatibility matrix
+# Windows 11 x64 兼容矩阵
 
-The product only loads a profile when the system `ControlCenter.dll` hash and required PE/ABI metadata match one entry in `src/compatibility.h`. PDB identity is checked for profiles that declare it. A scanner result is diagnostic input, not approval to load an unknown build.
+快设置磁贴依赖 Windows Shell 内部 COM/XAML 接口。运行时只按 `ControlCenter.dll` 的 SHA-256、PE 指纹和档案要求的 PDB GUID/Age 识别；主机 build 号或相邻版本通过均不能代替精确二进制匹配。
 
-Profile IDs retain the build label from the original ABI validation. The runtime matcher selects by DLL hash and PE/PDB metadata, not by the host OS build number. A matching binary found in an update for another build confirms the same DLL fingerprint, but does not by itself confirm Shell behavior on that host.
+本矩阵以 2026-10-16 的 Windows Release Information、Microsoft Update Catalog、Winbindex 快照和本地隔离 ABI 检查为依据。ABI 筛查只表示候选 DLL 在独立进程中激活成功、唯一接口 IID 的 vtable slot 6 指向匹配 PDB 的 `Initialize` 函数；探针没有调用该函数、没有连接 ShellHost。它不是目标系统的完整运行时验收。
 
-## Current profiles
+## 当前覆盖
 
-| Windows build | Profile | DLL SHA-256 | ABI evidence | Current UI evidence |
-|---|---|---|---|---|
-| 26300.9457 | `win11-x64-26300.9457` | `3E9A30BD1E92220BAEEBA90CD0AC409AE541C650019AD7C80AEC97DAF39C3261` | PE timestamp `0xF0B032A1`, image size `0x3D3000`, Initialize RVA `0xAC6A0`; profile does not require a PDB identity | Historical prototype interaction was checked; the 0.3.3 binary has not been installed on this build |
-| 26300.9711 | `win11-x64-26300.9711` | `0A9A84B0B7ED6110A410BD76150CE0DA04DC29B901838155AB7CE2D8BF2FFB51` | PE timestamp `0x7162BCEC`, image size `0x3EA000`, required PDB GUID `69549732-A6CF-1C43-FDF7-ED1FD2227E42` age 1, Initialize RVA `0xAC420` | User confirmed the 0.3.2 tile appeared; current 0.3.3 status is enabled with an active Shell session, but click, drag, and order persistence have not been rechecked on this build |
-| 26100.4946 | `win11-x64-26100.4946` (beta candidate) | `C1786EC32A32F3815A92F2895E60FDE938033BB24007AD6AF11856C9C985491E` | PE timestamp `0xDCBA0B0B`, image size `0x3B8000`, PDB GUID `EAFC8570-D54B-672B-7815-F76B54D84031` age 1; matching `IQuickActionViewModel` IID and slot 6, candidate Initialize RVA `0xACFB0` | Isolated activation/QI/vtable probe passed on host 26300.9711; 26100.4946 Shell UI test pending. Beta validation only |
-| 26200.9168 / 26100.9168 | `win11-x64-26200.9168` (beta candidate) | `E35DD0B8940BC97DA379C6B3E6A5C5F6D1D6CCBDEE2D062D660148C30FCF37AF` | PE timestamp `0x381C21E7`, image size `0x3D3000`, PDB GUID `37209F4E-83C8-8201-165D-6C7E2201B671` age 1; matching `IQuickActionViewModel` IID and slot 6, Initialize RVA `0xAC690` | Isolated activation/QI/vtable probe and Microsoft Authenticode check passed on host 26300.9711; both target Shell UI tests pending. Beta validation only |
+| Windows 版本 | 当前官方 x64 build | 本档案状态 | 主要边界 |
+|---|---:|---|---|
+| 26H2 | 26300.9711 | 识别 26300.9457 与 .9711 两个指纹；.9550 更新映射到 .9711 指纹 | 用户此前在 26300.9711 验证过磁贴交互；本 beta 更新尚未重新实测 |
+| 25H2 | 26200.9711 | 多个 26200 月度组件档案，并复用与 26H2 相同的 .9457/.9711 文件指纹 | 26200.9168、其他新增构建的 Shell 行为均待目标机验收 |
+| 24H2 | 26100.9711 | 多个 26100 月度组件档案，并复用与 26H2 相同的 .9457/.9711 文件指纹 | 26100.4202–4351 仍未知：完整符号服务器 PDB 的 GUID 相同但 age 为 3，DLL 要求 age 1；目标机验收待补 |
+| 26H1 | 28000.3231 | 不纳入 x64 GA 档案 | 版本页列为面向新设备的 GA 版本，但 KB5127646 的 x64 Catalog 包被分类为 Insider Pre-Release；ARM64 包的分类不同 |
+| 23H2 | 22631.7652 | 不支持 | 使用旧 Quick Actions 数据模型/宿主；需独立适配器。Home/Pro 已结束更新，Enterprise/Education 更新支持截至 2026-11-10 |
+| 22H2 及更早 | 旧版 | 不支持/未完整盘点 | 使用旧 Quick Actions 路径；22H2 所有版本均已结束更新 |
 
-The 26300 profile hashes also appear in later Winbindex update associations for 24H2/25H2 builds, described below. The 26100.4946 profile is a beta candidate based on an exact user-reported installed-file hash; package catalog verification and target Shell UI acceptance remain pending. The 26100/26200.9168 profile maps one shared hash associated with the August 2026 KB5121003 update; its Microsoft Authenticode signature and isolated ABI contract passed, but target Shell UI acceptance remains pending. Other distinct DLL hashes remain unknown and fail closed. This is not complete Windows 11 coverage.
+微软 release page 当前将 26H2、25H2、24H2 的最新 GA build 列为 26300.9711、26200.9711 和 26100.9711，并列出 23H2 的 22631.7652。26H1 被限定为新设备版本；x64 的 KB5127646 Catalog 项仍标为 Insider Pre-Release，所以本项目按“Windows x64 正式包”范围排除它。23H2 Home/Pro 已于 2025-11-11 结束更新，Enterprise/Education 截止 2026-11-10；22H2 Home/Pro 于 2024-10-08 结束，Enterprise/Education/IoT Enterprise 于 2025-10-14 结束。[Windows 11 release information](https://learn.microsoft.com/en-us/windows/release-health/windows11-release-information)，[KB5127646 Update Catalog 搜索](https://www.catalog.update.microsoft.com/Search.aspx?q=KB5127646)，[Home/Pro 生命周期](https://learn.microsoft.com/en-us/lifecycle/products/windows-11-home-and-pro)，[Enterprise/Education 生命周期](https://learn.microsoft.com/en-us/lifecycle/products/windows-11-enterprise-and-education-version-21h2)。
 
-## Official release-family inventory
+## 已识别的 23 个精确指纹
 
-Snapshot date: 2026-10-16. The Windows release-information overview still showed September's servicing baseline when checked, so this inventory uses Microsoft's October 13 update notes and Update Catalog entries where available. The four exact DLL profiles comprise two original ABI baselines (26300.9457 and 26300.9711) and two beta candidates (26100.4946 and the shared 26100/26200.9168 component). Each distinct monthly/OOB DLL hash still needs review. [Windows 11 release information](https://learn.microsoft.com/en-us/windows/release-health/windows11-release-information), [October 13 KB5127648 notes](https://support.microsoft.com/en-gb/servicing/os/windows-11/2026/10/kb5127648-windows-11-24h2-25h2-26h2-security-update), and [Microsoft Update Catalog, October 2026](https://www.catalog.update.microsoft.com/Search.aspx?q=Windows+11+2026%2F10).
+下表短哈希只用于阅读；完整 64 位 SHA-256、PE 指纹、PDB GUID/Age、接口 IID 和 Initialize RVA 均固定在 [`src/compatibility.h`](../src/compatibility.h)。同一二进制可能被多个 release/build 复用，profile ID 是发现时的代表 build，不是运行时版本判断。
 
-| Version | October 2026 x64 update evidence | DLL profile state |
+| Profile | SHA-256 前 12 位 | 来源/关联 |
 |---|---|---|
-| 26H2 | 26300.9711, KB5127648 | Existing exact profile; candidate downloaded, hash/signature checked, and scanner matched it |
-| 26H1 | 28000.3231, KB5127646; Microsoft lists 26H1 in the GA channel for new devices | Unknown DLL hash; public symbol differences and absent UDT layouts leave ABI unproven, so it remains unsupported |
-| 25H2 | 26200.9711, KB5127648 | Same DLL hash as the 26300.9711 profile; 26200.9457 and .9445 updates also map to the 26300.9457 profile hash. 26200.9168 uses the separate KB5121003 beta hash; no 26200 host test |
-| 24H2 | 26100.9711, KB5127648 | Same DLL hash as the 26300.9711 profile; 26100.9457 and .9445 updates also map to the 26300.9457 profile hash. Historical 26100.4946 has a separate beta profile; 26100.9168 shares the KB5121003 beta hash with build 26200.9168. No 26100 host UI test |
-| 23H2 | October x64 cumulative update KB5126653, OS build 22621.7652 | No AMD64 `ControlCenter.dll` candidate in Winbindex or the current update file list. The 22H2 base-image inventory points to the older Quick Actions files, but the exact current 23H2 image and host behavior remain unverified. No profile; see the [23H2 evidence record](compatibility-23h2.md) |
-| 22H2 and earlier | Historical releases | Not yet inventoried |
+| `win11-x64-26300.9457` | `3E9A30BD1E92` | 26H2 基线；也关联 26100/26200.9445、.9457 |
+| `win11-x64-26300.9711` | `0A9A84B0B7ED` | 26H2 .9550/.9711；也关联 24H2/25H2 .9711 |
+| `win11-x64-26100.1742` | `EEFA8B94AA00` | 24H2 GA 基线组件 |
+| `win11-x64-26100.2033` | `077FA4E4B2AB` | 24H2 October 2024 GA update |
+| `win11-x64-26100.2161` | `9D5074F1B2C4` | 24H2 October 2024 OOB update |
+| `win11-x64-26100.2454` | `F33F0C2E199C` | 24H2 November 2024 update family |
+| `win11-x64-26100.3037` | `37B06332DEA9` | 24H2 January 2025 update |
+| `win11-x64-26100.3323` | `959AF64A0BA1` | 24H2 February 2025 update |
+| `win11-x64-26100.3624` | `D6850CFF93FF` | 24H2 March 2025 update |
+| `win11-x64-26100.3915` | `ACD252B8D62F` | 24H2 April 2025 update |
+| `win11-x64-26100.4484` | `C961FD54FF12` | 24H2 June 2025 update |
+| `win11-x64-26100.4946` | `C1786EC32A32` | 24H2 July/August 2025 candidate; Shell UI test pending |
+| `win11-x64-26100.5074` | `F1684659B6E4` | 24H2 August 2025 update family |
+| `win11-x64-26200.6899` | `27DEBB0B4765` | 25H2 October 2025; same component also associated with 26100.6725 |
+| `win11-x64-26200.7019` | `AE5903681072` | 25H2 October 2025 OOB/update family |
+| `win11-x64-26200.7309` | `5A832B5B673F` | 25H2 November 2025 update family |
+| `win11-x64-26200.7705` | `46E26CF66CB8` | 25H2 January 2026 update family |
+| `win11-x64-26200.7922` | `2645119925A6` | 25H2 February 2026 update family |
+| `win11-x64-26200.8116` | `B6E6BC510A2D` | 25H2 March 2026 update family |
+| `win11-x64-26200.8328` | `AABE326BD7F8` | 25H2 April 2026 update family |
+| `win11-x64-26200.8524` | `998CDBED64F6` | 25H2 May/June 2026 update family |
+| `win11-x64-26200.8737` | `4FCF9EE69AA2` | 25H2 June/July 2026 update family |
+| `win11-x64-26200.9168` | `E35DD0B8940B` | KB5121003 shared component; also associated with 26100.9168 |
 
-Microsoft's KB5127648 notes confirm the October 13 builds 26300.9711, 26200.9711, and 26100.9711. The current release-information page lists 26H1 in the General Availability Channel and limits it to new devices rather than in-place feature updates. Treat that official release classification as GA; its unknown x64 DLL still requires ABI review. ARM64 remains outside this work.
+All 19 newly added fingerprints require their own PDB identity and profile-specific IID. The older interface IID `{F8FE70C8-8A70-5E6B-ACE2-4E7A26D921B7}` appears in earlier 26100 profiles; later candidates use `{CA79615D-BFBA-58DC-8D55-741963985C48}`. The product does not infer an IID from OS build at runtime.
 
-Microsoft identifies KB5126653 as Windows 11 23H2 OS build 22621.7652. Do not label this release 22631 based on the version name; 22H2 and 23H2 share a common core and identical system-file set. The 23H2 evidence record distinguishes current-update inventory from a complete installed-image inventory.
+## Batch review and exclusions
 
-## Winbindex batch scan snapshot
+The 2026-10-16 Winbindex snapshot contains 38 unique AMD64 `ControlCenter.dll` hashes and 84 update associations. Among the 24 previously unknown 26100/26200 candidates, 23 passed the isolated ABI screen. Nineteen had at least one Windows 11 GA update association and were added. Four hashes were tied only to pre-GA/preview builds and remain excluded. One 26100.4202–4351 candidate remains unknown: the first cached symbol file failed DIA parsing; a full 22,245,376-byte Microsoft symbol-server download could be parsed by Microsoft's `ms-pdb`-based reader, but its PDB binding key reports the candidate GUID at age 3 while the DLL's CodeView record requires age 1. It is therefore not an exact PDB match and cannot supply a profile RVA. ABI pass does not mean that 19 target Windows builds were manually tested.
 
-The 2026-10-16 index contained 38 unique AMD64 DLL hashes and 84 update associations. All 38 downloads matched their indexed SHA-256. The initial scan matched two profiles and rejected 36 candidates. Later isolated ABI reviews added the 26100.4946 and shared 26100/26200.9168 hashes as beta candidates, so the table now recognizes four of those hashes; the remaining 34 still fail closed. The current profile hashes have these additional update-title associations:
+The ten 28000 candidates belong to the 26H1 x64 package stream, which the Update Catalog currently classifies as Insider Pre-Release; they are outside this x64 GA release target. An ABI screening result alone does not change that classification.
 
-| Existing profile | Winbindex associations | Acceptance boundary |
-|---|---|---|
-| `win11-x64-26300.9711` (`0A9A84B0…2FFB51`) | KB5127648: 26100.9711, 26200.9711, 26300.9711; KB5124010: 26100/26200/26300.9550 Preview | Same DLL fingerprint; only the 26300 host has product runtime evidence |
-| `win11-x64-26300.9457` (`3E9A30BD…F39C3261`) | KB5124008: 26100/26200.9445; KB5129195: 26100/26200.9457 Out-of-band | Same DLL fingerprint; 26100/26200 hosts are untested |
-| `win11-x64-26100.4946` (`C1786EC3…85491E`) | KB5063878: 26100.4946 | Exact candidate ABI contract passed isolated activation, IID, QI, and slot checks on a 26300 host; target Shell integration pending |
-| `win11-x64-26200.9168` (`E35DD0B8…FCF37AF`) | KB5121003: 26100/26200.9168 | Microsoft Authenticode is valid; exact candidate ABI contract passed isolated activation, IID, QI, and slot checks on a 26300 host; target Shell integration pending |
+## 23H2 and the legacy adapter gap
 
-The scan host reported `Authenticode=Valid` for four candidates and `NotSigned` for 34. The corresponding update `.cat` files were not fetched or verified, so `NotSigned` is not treated as proof of an invalid Microsoft package. Thirty-four candidate hashes have at least one update title containing `Preview`; title text alone does not establish the release channel. The scan reports and binaries are local, ignored artifacts under `.compat-index/` and are not part of a release.
+The October 2026 23H2 update is KB5126653. Its Winbindex file metadata associates the update with legacy modules such as `QuickActionsDataModel.dll`, `Windows.UI.QuickActions.dll`, and `CustomShellHost.exe`, while the current product adapter is built around `ControlCenter.dll` and `IQuickActionViewModel`. A 22621.1 baseline sample was extracted from a cached Microsoft-format UUP image package: the x64 `QuickActionsDataModel.dll` SHA-256 is `488A3C2B39A8A5403634196D512AB9B5640F94FFDE9BF270CB0D37C10C837C30` (405,504 bytes), with PDB identity `{9B3E135C-D340-4236-59DF-CBD5B35A085D}` age 1. Its exact PDB exposes legacy symbols including `QuickActionsProvider::Initialize`, `get_AvailableQuickActions`, `QuickSettingDefinition::MakeQuickAction`, and `ControlCenterSettings::ReadQuickActionsList`. These confirm a distinct provider/data-model path in the 22621.1 baseline only; they do not establish the 23H2 servicing-build ABI or a safe insertion contract. A separate exact-package review and a 23H2 Shell test are required before any legacy adapter can be shipped. [KB5126653](https://support.microsoft.com/en-us/servicing/os/windows-11/2026/10/kb5126653-windows-11-23h2-security-update), [Winbindex project](https://github.com/m417z/winbindex), [22621.1 UUP Dump record](https://api.uupdump.net/get.php?id=356c1621-04e7-4e66-8928-03a687c3db73&lang=en-us&edition=professional&noLinks=1).
 
-## First GA unknown-hash triage
+## Acceptance boundaries
 
-Microsoft lists builds 26100.9168 and 26200.9168 in KB5121003, and the 25H2 release information classifies that release as General Availability. Winbindex associates their shared AMD64 component hash with `E35DD0B8940BC97DA379C6B3E6A5C5F6D1D6CCBDEE2D062D660148C30FCF37AF`. The downloaded DLL has a valid Microsoft Authenticode signature. Its exact PDB identity (`37209F4E-83C8-8201-165D-6C7E2201B671`, age 1) was verified. Compared with the existing 26300.9711 PDB, normalized public symbol names were identical for `PaginatedToggleButton` (901), `IPaginatedToggleButton` (87), and `IQuickAction` (759), while both public PDBs exposed zero DIA-enumerable UDT layouts. The isolated ABI probe independently activated `ControlCenter.QuickActionViewModel`, confirmed the required IID and `QueryInterface`, and read slot 6 as the PDB `Initialize` RVA `0xAC690`. This is a beta profile only; neither target host's Shell behavior has been tested. [Microsoft release information](https://learn.microsoft.com/en-us/windows/release-health/windows11-release-information), [KB5121003](https://support.microsoft.com/en-us/servicing/os/windows-11/2026/08/kb5121003-windows-11-24h2-25h2-security-update).
-
-The latest indexed 26H1 x64 candidate is build 28000.3231 / KB5127646, DLL hash `1753C39539EF555055768664E5EF0B39881C0F1F41196705120C9C22DDD906BB`; it is still `unknown_binary`. Its exact PDB identity (`64B89726-EF97-9105-CCAC-F39836D92891`, age 1) was verified. Compared with the existing 26300.9711 PDB, normalized public symbol sets differ: `PaginatedToggleButton` 1025 vs 901 names, `IPaginatedToggleButton` 100 vs 87, and `IQuickAction` 714 vs 759. Neither PDB exposes DIA-enumerable UDT layouts. These differences reinforce that this hash cannot reuse the existing profile; no profile has been added. Microsoft lists 26H1 in the GA channel, while the Catalog calls the x64 KB5127646 package Insider Pre-Release, so its eligibility for the user's x64 GA target needs clarification. [Microsoft release information](https://learn.microsoft.com/en-us/windows/release-health/windows11-release-information), [Update Catalog search for KB5127646](https://www.catalog.update.microsoft.com/Search.aspx?q=KB5127646).
-
-## Adding a profile
-
-1. On the candidate Windows build, run the developer-only `compat-scan.exe` against the system DLL or a preserved `ControlCenter.dll`. Record the output privately; it contains no full path, SID, process ID, or UI tree.
-2. Confirm the DLL is an authentic Microsoft system component and retrieve matching public symbols when available. Review the required QuickAction type, IID, setters, collection access, vtable slot, and Initialize implementation. A matching PDB alone does not establish ABI safety.
-3. Add a profile entry only after the interface has been checked in an isolated process. Unknown builds must continue to fail closed while this work is pending.
-4. Build and run the compatibility parser tests, then test the candidate on a VM or host running that exact build. Verify tile display, both theme transitions, native drag/reorder, position after reopening Quick Settings, Shell recreation, and sign-in recovery.
-5. Publish the profile with a new product version and keep the previous exact profiles and a rollback package available.
-
-The first release goal is Windows 11 x64 official builds. ARM64 and Insider Preview builds are out of scope for this matrix.
+- Runtime configuration contains only profiles in `src/compatibility.h`; all other hashes remain fail-closed.
+- `abi_contract_match` does not call `Initialize`, touch theme settings, or load a candidate into `ShellHost.exe`.
+- Only Windows 11 x64 GA update fingerprints are considered here. 26H1 x64 Insider packages, ARM64, 23H2/22H2 legacy modules, and other preview builds are not supported by this beta.
+- Exact target-build UI acceptance still requires checking visibility, both theme transitions, alignment, native drag/reorder, saved position after closing/reopening, Shell recreation, sign-in recovery, and uninstall cleanup.
+- The build IDs in profile names are evidence labels. The runtime checks the actual DLL fingerprint and does not grant support merely because Windows reports a matching OS build.

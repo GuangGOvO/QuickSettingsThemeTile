@@ -209,7 +209,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
         INITCOMMONCONTROLSEX controls{sizeof(controls),ICC_STANDARD_CLASSES}; InitCommonControlsEx(&controls);
         TASKDIALOG_BUTTON buttons[]={{101,L"启用功能"},{102,L"卸载功能"}};
         auto initialCompatibility=product::InspectCompatibility();
-        auto content=L"磁贴支持原生拖动。启用后可以关闭此工具，无需常驻安装工具或自建服务。\n\n已验证档案："+product::SupportedProfilesSummary();
+        auto content=L"磁贴支持原生拖动。启用后可以关闭此工具，无需常驻安装工具或自建服务。\n\n已核验的精确 DLL 指纹："+product::SupportedProfilesSummary()+L"\n具体构建的 Shell 交互仍以实机测试结果为准。";
         if (!initialCompatibility.supported()) content+=L"\n当前系统："+std::wstring(compatibility::StatusName(initialCompatibility.status))+L"（请勿强制接入未知系统组件）";
         TASKDIALOGCONFIG dialog{sizeof(dialog)}; dialog.hInstance=instance;
         dialog.dwFlags=TDF_ALLOW_DIALOG_CANCELLATION|TDF_SIZE_TO_CONTENT; dialog.dwCommonButtons=TDCBF_CANCEL_BUTTON;

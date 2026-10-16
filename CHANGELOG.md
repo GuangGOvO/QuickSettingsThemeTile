@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.5-native Beta 1 — 2026-10-16（x64 GA 指纹扩展）
+
+- 将精确 `ControlCenter.dll` 档案从 4 个扩展到 23 个，新增 19 个与 Windows 11 24H2/25H2 正式更新相关的 x64 指纹；每个档案固定 SHA-256、PE 指纹、PDB GUID/Age、`IQuickActionViewModel` IID 和 Initialize RVA。
+- 24 个未知 26100/26200 候选中，23 个通过隔离进程 ABI 筛查；其中 19 个有正式更新关联而纳入，4 个仅对应正式发布前候选更新而排除。另有 1 个 26100.4202–4351 候选保持未知：完整重下的微软符号服务器 PDB 虽有相同 GUID，但 age 为 3，而 DLL 要求 age 1；不匹配的 PDB 不用于生成档案。
+- 新增批量候选 ABI 审核脚本与接口 IID 自动发现；扫描器不会修改档案或加载 Shell。新增档案均未在对应 Windows build 的 Shell 中手动验收。
+- 明确 26H1 版本页的 GA 标记不代表其 x64 累积包属于 GA：KB5127646 的 x64 Catalog 项仍为 Insider Pre-Release，因此不纳入 x64 正式档案。
+- 记录 23H2/22H2 的旧 Quick Actions 宿主与数据模型；补查到 22621.1 基线 `QuickActionsDataModel.dll` 的精确 PDB 和 provider 符号，但这只能确认旧架构不同，不构成旧版适配。23H2/22H2 仍未支持。
+- Compatibility/profile/PE 检查通过 260 项；12 项主题后端事务检查保持通过，未修改系统主题。
+- 更新产品版本、运行组件目录与产品 CLSID；x64 产品构建完成，安装器 SHA-256 见本次发行附件。目标 Shell UI 验收继续待用户在相应 Windows build 实测。
+
 ## 0.3.3-native Beta 1 — 2026-10-16（公开手动验收）
 
 - 将已验证的 DLL 哈希、PE 指纹、可用 PDB 标识和 Initialize RVA 合并为单一档案表，启用、状态查询、加载器和 Shell 内部检查共用该表。

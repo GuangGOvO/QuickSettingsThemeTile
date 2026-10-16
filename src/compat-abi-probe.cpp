@@ -11,8 +11,8 @@
 namespace wf = winrt::Windows::Foundation;
 
 int wmain(int argc,wchar_t** argv) {
-    if (argc!=3) {
-        std::wcerr << L"Usage: compat-abi-probe.exe <ControlCenter.dll> <expected-Initialize-RVA>\n";
+    if (argc!=3 && argc!=4) {
+        std::wcerr << L"Usage: compat-abi-probe.exe <ControlCenter.dll> <expected-Initialize-RVA> [expected-IID]\n";
         return 64;
     }
     wchar_t* end=nullptr;
@@ -20,6 +20,15 @@ int wmain(int argc,wchar_t** argv) {
     if (!end || *end || expectedRva>MAXDWORD) {
         std::wcerr << L"expected-Initialize-RVA must be a valid 32-bit integer.\n";
         return 64;
+    }
+    IID expectedIid{};
+    bool hasExpectedIid=false;
+    if (argc==4) {
+        if (FAILED(CLSIDFromString(argv[3],&expectedIid))) {
+            std::wcerr << L"expected-IID must be a valid GUID.\n";
+            return 64;
+        }
+        hasExpectedIid=true;
     }
 
     auto path=std::filesystem::path(argv[1]);
@@ -39,6 +48,8 @@ int wmain(int argc,wchar_t** argv) {
     bool apartmentInitialized=false,activated=false,iidReported=false,querySucceeded=false,moduleTarget=false;
     uint32_t actualRva=0;
     HRESULT activationHr=E_FAIL,queryHr=E_NOINTERFACE;
+    std::vector<IID> implementedIids;
+    std::vector<IID> matchedIids;
     try {
         winrt::init_apartment(winrt::apartment_type::multi_threaded);
         apartmentInitialized=true;
@@ -55,18 +66,33 @@ int wmain(int argc,wchar_t** argv) {
                     auto abi=reinterpret_cast<::IInspectable*>(winrt::get_abi(instance));
                     ULONG iidCount=0; IID* iids=nullptr;
                     if (SUCCEEDED(abi->GetIids(&iidCount,&iids))) {
-                        for (ULONG i=0;i<iidCount;++i) if (IsEqualIID(iids[i],__uuidof(NativeModelInitialize))) iidReported=true;
+                        for (ULONG i=0;i<iidCount;++i) implementedIids.push_back(iids[i]);
                         CoTaskMemFree(iids);
                     }
-                    NativeModelInitialize* initialize=nullptr;
-                    queryHr=abi->QueryInterface(__uuidof(NativeModelInitialize),reinterpret_cast<void**>(&initialize));
-                    querySucceeded=SUCCEEDED(queryHr) && initialize;
-                    if (querySucceeded) {
-                        auto table=*reinterpret_cast<void***>(initialize);
+
+                    std::vector<IID> candidates;
+                    if (hasExpectedIid) candidates.push_back(expectedIid);
+                    else candidates=implementedIids;
+                    for (auto const& candidateIid:candidates) {
+                        NativeModelInitialize* initialize=nullptr;
+                        auto currentHr=abi->QueryInterface(candidateIid,reinterpret_cast<void**>(&initialize));
+                        if (FAILED(currentHr) || !initialize) {
+                            queryHr=currentHr;
+                            continue;
+                        }
+                        queryHr=currentHr;
+                        querySucceeded=true;
+                        auto const& table=*reinterpret_cast<void***>(initialize);
                         auto target=reinterpret_cast<uintptr_t>(table[6]);
                         auto base=reinterpret_cast<uintptr_t>(module);
-                        moduleTarget=target>=base && target<base+image.facts.imageSize;
-                        if (moduleTarget) actualRva=static_cast<uint32_t>(target-base);
+                        auto isModuleTarget=target>=base && target<base+image.facts.imageSize;
+                        auto candidateRva=isModuleTarget?static_cast<uint32_t>(target-base):0;
+                        if (isModuleTarget && candidateRva==expectedRva) {
+                            matchedIids.push_back(candidateIid);
+                            actualRva=candidateRva;
+                            moduleTarget=true;
+                            iidReported=std::any_of(implementedIids.begin(),implementedIids.end(),[&](IID const& iid){return IsEqualIID(iid,candidateIid);});
+                        }
                         initialize->Release();
                     }
                 }
@@ -81,7 +107,12 @@ int wmain(int argc,wchar_t** argv) {
 
     auto host=compatibility::ReadHostVersion();
     bool rvaMatches=moduleTarget && actualRva==expectedRva;
-    bool passed=activated && iidReported && querySucceeded && rvaMatches;
+    bool passed=activated && iidReported && querySucceeded && rvaMatches && matchedIids.size()==1;
+    auto iidText=[](IID const& iid) {
+        wchar_t value[40]{};
+        StringFromGUID2(iid,value,ARRAYSIZE(value));
+        return std::wstring(value);
+    };
     std::wcout << L"{\"probeStatus\":\"" << (passed?L"abi_contract_match":L"abi_contract_mismatch")
         << L"\",\"profileStatus\":\"" << compatibility::StatusName(image.status)
         << L"\",\"supportedByProfileTable\":" << (image.supported()?L"true":L"false")
@@ -98,6 +129,14 @@ int wmain(int argc,wchar_t** argv) {
         << L",\"initializeSlot\":6,\"actualInitializeRva\":\"" << compatibility::HexValue(actualRva)
         << L"\",\"expectedInitializeRva\":\"" << compatibility::HexValue(expectedRva)
         << L"\",\"initializeCalled\":false,\"shellTouched\":false"
+        << L",\"matchedInitializeIid\":\"" << (matchedIids.size()==1?iidText(matchedIids.front()):L"") << L"\""
+        << L",\"matchedInitializeIidCount\":" << matchedIids.size()
+        << L",\"interfaceIids\":[";
+    for (size_t i=0;i<implementedIids.size();++i) {
+        if (i) std::wcout << L",";
+        std::wcout << L"\"" << iidText(implementedIids[i]) << L"\"";
+    }
+    std::wcout << L"]"
         << L",\"activationHresult\":\"" << compatibility::HexValue(static_cast<uint32_t>(activationHr))
         << L"\",\"queryHresult\":\"" << compatibility::HexValue(static_cast<uint32_t>(queryHr)) << L"\"}\n";
     return passed?0:2;
