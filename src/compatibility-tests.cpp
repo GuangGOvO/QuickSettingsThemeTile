@@ -8,8 +8,8 @@ int main() {
         ++checks;
         if (!condition) { std::cerr << "FAIL: " << label << '\n'; ExitProcess(1); }
     };
-    require(compatibility::Profiles.size()==23,"expanded x64 GA fingerprint table has the reviewed profile count");
-    std::array<std::pair<wchar_t const*,wchar_t const*>,19> expandedCandidates{{
+    require(compatibility::Profiles.size()==24,"expanded x64 GA fingerprint table has the reviewed profile count");
+    std::array<std::pair<wchar_t const*,wchar_t const*>,20> expandedCandidates{{
         {L"win11-x64-26100.1742",L"EEFA8B94AA00F2DE94FD086963DF42ED63429F6CBD257A0A50B074475B487202"},
         {L"win11-x64-26100.2033",L"077FA4E4B2ABBE4D3B7057A9B80F16392578AB16A22AE8C9EE7B5F65217C5933"},
         {L"win11-x64-26100.2161",L"9D5074F1B2C49E559ECB122135A86C3ACD705D0CDFB13CF2E8FC277A5DDACDE1"},
@@ -18,6 +18,7 @@ int main() {
         {L"win11-x64-26100.3323",L"959AF64A0BA147631AE2FDCB1ECA1DA59832D1044006C176046E699C1C37486B"},
         {L"win11-x64-26100.3624",L"D6850CFF93FF2DA50BF52F1A25A3ECDFF52D6D0A9F12C40BE2823CE95E8A88C8"},
         {L"win11-x64-26100.3915",L"ACD252B8D62F7725629F29151DB69E1C3E8F0DC998D1E12417A1A116CE183BF3"},
+        {L"win11-x64-26100.4202",L"1E7A7F673297B4A2023FEAD98DBEF8C5066A279EABCACA94DCCA16C44740DCDC"},
         {L"win11-x64-26100.4484",L"C961FD54FF12ED94DF5EC9FD107E043FED8F67B6C138DC5A647C9E908FDF2B9C"},
         {L"win11-x64-26100.5074",L"F1684659B6E4AB964FF7A55180B06831EB1295EA80E93853154D466D5A1152B3"},
         {L"win11-x64-26200.6899",L"27DEBB0B47658A410CDAF7343576EC5B46802F57100FEBD76CFDBE1496AEECBF"},
@@ -34,9 +35,16 @@ int main() {
         auto profile=compatibility::FindById(id);
         require(profile!=nullptr,"reviewed GA candidate profile exists");
         require(compatibility::Hex(profile->sha256)==hash,"reviewed GA candidate hash is exact");
-        require(profile->requirePdbIdentity && profile->pdbAge==1,"reviewed GA candidate requires its exact PDB identity");
+        require(profile->requirePdbIdentity && profile->pdbAge==1,"reviewed GA candidate pins its DLL CodeView identity");
     }
-    require(compatibility::FindById(L"win11-x64-26100.4202")==nullptr,"inconclusive PDB candidate remains unsupported");
+    auto early24h2=compatibility::FindById(L"win11-x64-26100.4202");
+    require(early24h2!=nullptr,"26100.4202 ABI-screened candidate is present");
+    require(early24h2->machine==IMAGE_FILE_MACHINE_AMD64 && early24h2->timestamp==0xf77347ae && early24h2->imageSize==0x3b4000,"26100.4202 PE fingerprint");
+    require(early24h2->initializeRva==0xacf90,"26100.4202 Initialize RVA is pinned to the isolated ABI result");
+    GUID early24h2Pdb{0x714ece22,0x9dcc,0xc2ec,{0x02,0x79,0xbc,0xda,0x0b,0x8e,0x89,0x96}};
+    require(early24h2->requirePdbIdentity && early24h2->pdbAge==1 && std::memcmp(&early24h2->pdbGuid,&early24h2Pdb,sizeof(GUID))==0,"26100.4202 CodeView identity matches the PE");
+    GUID early24h2InitializeIid{0xca79615d,0xbfba,0x58dc,{0x8d,0x55,0x74,0x19,0x63,0x98,0x5c,0x48}};
+    require(std::memcmp(&early24h2->initializeIid,&early24h2InitializeIid,sizeof(GUID))==0,"26100.4202 Initialize IID is the unique isolated ABI result");
     for (auto const& profile : compatibility::Profiles) {
         GUID emptyIid{};
         require(std::memcmp(&profile.initializeIid,&emptyIid,sizeof(GUID))!=0,"profile has a verified Initialize IID");
@@ -58,7 +66,7 @@ int main() {
         facts.timestamp=profile.timestamp;
         if (profile.requirePdbIdentity) {
             facts.pdbGuid.Data1^=1;
-            require(compatibility::Match(facts).status==compatibility::Status::MetadataMismatch,"PDB identity mismatch rejected");
+            require(compatibility::Match(facts).status==compatibility::Status::MetadataMismatch,"DLL CodeView identity mismatch rejected");
             facts.pdbGuid=profile.pdbGuid; facts.hasPdbIdentity=false;
             require(compatibility::Match(facts).status==compatibility::Status::MetadataMismatch,"missing required PDB identity rejected");
         }
@@ -67,8 +75,8 @@ int main() {
     require(candidate!=nullptr,"26100.4946 beta candidate is present");
     require(compatibility::Hex(candidate->sha256)==L"C1786EC32A32F3815A92F2895E60FDE938033BB24007AD6AF11856C9C985491E","26100.4946 exact candidate hash");
     require(candidate->machine==IMAGE_FILE_MACHINE_AMD64 && candidate->timestamp==0xdcba0b0b && candidate->imageSize==0x3b8000,"26100.4946 PE fingerprint");
-    GUID candidatePdb{0xeafc8570,0xd54b,0x672b,{0x78,0x15,0xf7,0x6b,0x54,0xd8,0x40,0x31}};
-    require(candidate->requirePdbIdentity && candidate->pdbAge==1 && std::memcmp(&candidate->pdbGuid,&candidatePdb,sizeof(GUID))==0,"26100.4946 matching PDB identity");
+    GUID candidateCodeView{0xeafc8570,0xd54b,0x672b,{0x78,0x15,0xf7,0x6b,0x54,0xd8,0x40,0x31}};
+    require(candidate->requirePdbIdentity && candidate->pdbAge==1 && std::memcmp(&candidate->pdbGuid,&candidateCodeView,sizeof(GUID))==0,"26100.4946 matching DLL CodeView key");
     GUID currentInitializeIid{0xca79615d,0xbfba,0x58dc,{0x8d,0x55,0x74,0x19,0x63,0x98,0x5c,0x48}};
     require(std::memcmp(&candidate->initializeIid,&currentInitializeIid,sizeof(GUID))==0,"26100.4946 profile-specific Initialize IID");
     require(candidate->initializeRva==0xacfb0,"26100.4946 Initialize slot target RVA");
@@ -76,8 +84,8 @@ int main() {
     require(gaCandidate!=nullptr,"26200.9168 beta candidate is present");
     require(compatibility::Hex(gaCandidate->sha256)==L"E35DD0B8940BC97DA379C6B3E6A5C5F6D1D6CCBDEE2D062D660148C30FCF37AF","26200.9168 exact candidate hash");
     require(gaCandidate->machine==IMAGE_FILE_MACHINE_AMD64 && gaCandidate->timestamp==0x381c21e7 && gaCandidate->imageSize==0x3d3000,"26200.9168 PE fingerprint");
-    GUID gaCandidatePdb{0x37209f4e,0x83c8,0x8201,{0x16,0x5d,0x6c,0x7e,0x22,0x01,0xb6,0x71}};
-    require(gaCandidate->requirePdbIdentity && gaCandidate->pdbAge==1 && std::memcmp(&gaCandidate->pdbGuid,&gaCandidatePdb,sizeof(GUID))==0,"26200.9168 matching PDB identity");
+    GUID gaCandidateCodeView{0x37209f4e,0x83c8,0x8201,{0x16,0x5d,0x6c,0x7e,0x22,0x01,0xb6,0x71}};
+    require(gaCandidate->requirePdbIdentity && gaCandidate->pdbAge==1 && std::memcmp(&gaCandidate->pdbGuid,&gaCandidateCodeView,sizeof(GUID))==0,"26200.9168 matching DLL CodeView key");
     require(std::memcmp(&gaCandidate->initializeIid,&currentInitializeIid,sizeof(GUID))==0,"26200.9168 profile-specific Initialize IID");
     require(gaCandidate->initializeRva==0xac690,"26200.9168 Initialize slot target RVA");
     std::array<BYTE,0x400> image{};

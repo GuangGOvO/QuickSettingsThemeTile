@@ -2,13 +2,13 @@
 
 在 Windows 11 原生快速设置中添加“深色模式”磁贴。沿用系统拖动、分页和磁贴模板，点击同时切换系统与应用的浅色/深色主题。
 
-**0.3.5-native Beta 1 将精确 `ControlCenter.dll` 档案扩展到 23 个指纹，覆盖 24H2/25H2/26H2 的已核验组件。19 个新增指纹通过隔离 ABI 筛查；目标构建的 Shell 接入和磁贴交互仍需在对应系统实测。23H2/22H2 使用不同的旧快速操作架构，尚未适配；26100.4202–4351 的候选 PDB 身份不匹配（DLL 要求 age 1，符号服务器返回 age 3），因此继续拒绝。**
+**0.3.6-native Beta 1 包含 24 个精确 `ControlCenter.dll` 指纹，新增 26100.4202/.4349/.4351 共用指纹。该精确候选 DLL 通过隔离 ABI 探针，但这几个目标构建的 Shell 接入和磁贴交互尚未实测。23H2/22H2 使用不同的旧快速操作架构，仍未适配。**
 
 ## 下载与使用
 
 从 [Releases](https://github.com/GuangGOvO/QuickSettingsThemeTile/releases) 下载对应版本的 `ThemeTileSetup.exe`。GitHub 会为每个版本 tag 自动提供对应的源代码 ZIP；旧版本也可能有额外的 Windows ZIP。
 
-稳定版仍是 0.3.1-native；当前 Beta 1 含 23 个精确 DLL 指纹。每个档案均要求 DLL SHA-256、PE 指纹和对应 PDB 身份匹配。目标构建的界面验收仍待补齐；未列入档案的 DLL 会被拒绝接入。完整列表与证据见[兼容矩阵](docs/compatibility-matrix.md)。
+稳定版仍是 0.3.1-native；本 Beta 含 24 个精确 DLL 指纹。运行时档案要求 DLL SHA-256、PE 元数据、DLL 内 CodeView GUID/Age 与档案完全匹配；新增 `.4202` 档案的 Initialize RVA 和 IID 另经候选 DLL 隔离 ABI 探针交叉确认。目标构建的界面验收仍待补齐；未列入档案的 DLL 会被拒绝接入。完整列表与证据见[兼容矩阵](docs/compatibility-matrix.md)。
 
 当前预发布工具未进行代码签名，下载附件可用同页的 `SHA256SUMS.txt` 核对。
 
@@ -21,7 +21,7 @@
 
 从现场测试版 0.3.0 升级时，先用旧版工具卸载功能，再用新版启用。新版使用独立组件目录和产品 CLSID。旧版已映射的文件仍需宿主正常退出后用旧版工具清理；新版卸载器只清理自己的组件目录。
 
-从 0.3.3/0.3.4-native Beta 升级时也要先运行旧版并选择“卸载功能”，再启用本版。每个版本使用独立的组件目录；卸载时如果 DLL 仍被 Shell 映射，按提示等待宿主退出后再清理。
+从 0.3.3/0.3.4/0.3.5-native Beta 升级时也要先运行旧版并选择“卸载功能”，再启用本版。每个版本使用独立的组件目录；卸载时如果 DLL 仍被 Shell 映射，按提示等待宿主退出后再清理。
 
 ## 运行方式
 
@@ -35,23 +35,23 @@
 %LOCALAPPDATA%\Packages\Microsoft.Windows.ShellExperienceHost_cw5n1h2txyewy\LocalState\QuickSettingsThemeTile\
     enabled.cfg
     placement.json
-    runtime\0.3.5-native\ThemeTile.dll
-    runtime\0.3.5-native\ThemeTileLoader.exe
+    runtime\0.3.6-native\ThemeTile.dll
+    runtime\0.3.6-native\ThemeTileLoader.exe
 ```
 
 任务名称为 `QuickSettingsThemeTile-<当前用户 SID>`。位置文件保存前后相邻行动和索引；原生列表继续负责实际拖动。
 
 ## 兼容性与卸载
 
-此版本按精确 `ControlCenter.dll` 指纹放行，不按主机 build 数字单独放行。当前档案表有 23 个可识别指纹，覆盖 24H2/25H2/26H2 中已核验的组件；Winbindex 快照中另有 24H2/25H2 候选未通过或无法完成核验，26H1 x64 包属于 Insider Pre-Release，23H2/22H2 则需要不同的旧架构适配。开发用 `compat-scan.exe` 可检查当前系统 DLL 或离线包文件；扫描结果不会自动成为受支持档案。详细覆盖和验收边界见[兼容矩阵](docs/compatibility-matrix.md)与[候选发现流程](docs/compatibility-sources.md)。
+此版本按精确 `ControlCenter.dll` 指纹放行，不按主机 build 数字单独放行。当前档案表有 24 个可识别指纹，覆盖已核验的 x64 正式更新组件；Winbindex 快照中另有 24H2/25H2 候选未通过或无法完成核验，26H1 x64 包属于 Insider Pre-Release，23H2/22H2 则需要不同的旧架构适配。开发用 `compat-scan.exe` 可检查当前系统 DLL 或离线包文件；扫描结果不会自动成为受支持档案。详细覆盖和验收边界见[兼容矩阵](docs/compatibility-matrix.md)与[候选发现流程](docs/compatibility-sources.md)。
 
-开发者可用 [候选发现与扫描流程](docs/compatibility-sources.md) 查询 Winbindex 的 x64 元数据、从微软公共符号服务器下载并校验指定 DLL/PDB，或扫描从离线更新包提取的 DLL。公开 PDB 检查只输出匹配身份的符号线索；所有未知哈希继续拒绝加载，流程不会修改档案表或把候选加载进 Shell。
+开发者可用[候选发现与扫描流程](docs/compatibility-sources.md)查询 Winbindex 的 x64 元数据、从微软公共符号服务器下载 DLL/PDB，或扫描离线更新包提取的 DLL。PDB 工具目前核对 DIA 返回的 CodeView GUID/Age 并输出符号线索，但不会解析 PDB Info 流；候选 DLL 仍须通过独立 ABI 探针，所有未知哈希继续拒绝加载，流程不会修改档案表或把候选加载进 Shell。
 
 卸载会停止主题控制器、撤销订阅、移除自建磁贴，并删除计划任务与启用/位置配置。当前宿主仍映射的 DLL 可能暂时无法删除；工具会提示。等待宿主正常退出（例如正常注销）后，再执行一次卸载即可清理剩余文件。不会强制卸载仍可能被 COM 回调使用的 DLL。
 
 ## 验证状态
 
-0.3.5-native Beta 1 包含 23 个精确 DLL 指纹。19 个新增档案通过隔离进程激活、IID、QueryInterface 和 Initialize 槽位核验；探针运行于 build 26300.9711，未调用 Initialize 或连接 ShellHost。目标构建的磁贴显示、切换、拖动和恢复仍待对应系统实测。详见[验证记录](docs/validation.md)和[兼容矩阵](docs/compatibility-matrix.md)。
+0.3.6-native Beta 1 包含 24 个精确 DLL 指纹；新增 `.4202` 档案经隔离进程激活、IID、QueryInterface 和 Initialize 槽位核验，探针运行于 build 26300.9711，未调用 Initialize 或连接 ShellHost。新增档案的目标构建磁贴显示、切换、拖动和恢复仍待对应系统实测。详见[验证记录](docs/validation.md)和[兼容矩阵](docs/compatibility-matrix.md)。
 
 详见 [验证记录](docs/validation.md)。安装器的活动会话状态不等同于按钮实际显示或所有输入方式通过测试。
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.6-native Beta 1 — 2026-10-16（x64 GA 指纹补充）
+
+- 将精确 `ControlCenter.dll` 档案扩展到 24 个，新增 26100.4202/.4349/.4351 共用指纹；SHA-256、PE CodeView 身份、Initialize RVA `0xACF90` 和唯一 IID 已通过本地扫描与隔离 ABI 探针交叉验证。
+- 候选符号 PDB 的 Info-stream Age 3 与 DLL CodeView Age 1 不一致，因此不作为精确匹配证据；RVA 由候选 DLL 的真实 slot-6 函数指针独立确认。对应系统的快速设置 UI 尚未人工验收。
+- 23H2/22H2 旧 Quick Actions 路径仍无适配器，保持拒绝接入。
+
 ## 0.3.5-native Beta 1 — 2026-10-16（x64 GA 指纹扩展）
 
 - 将精确 `ControlCenter.dll` 档案从 4 个扩展到 23 个，新增 19 个与 Windows 11 24H2/25H2 正式更新相关的 x64 指纹；每个档案固定 SHA-256、PE 指纹、PDB GUID/Age、`IQuickActionViewModel` IID 和 Initialize RVA。

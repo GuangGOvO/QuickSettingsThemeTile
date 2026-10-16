@@ -64,16 +64,16 @@ function Invoke-PdbInspection([string]$Path) {
 }
 $cachedPdb = Test-Path -LiteralPath $pdbPath
 if ($cachedPdb) {
-    Write-Verbose 'Checking cached PDB identity.'
+    Write-Verbose 'Checking the cached PDB through DIA.'
     $inspectExitCode = Invoke-PdbInspection $pdbPath
 } else {
-    Write-Verbose 'Downloading exact PDB identity from the Microsoft public symbol server.'
+    Write-Verbose 'Downloading the symbol-server PDB selected by the DLL CodeView key.'
     Invoke-WebRequest -Uri $symbolUri -OutFile $pdbPath -TimeoutSec 300 -ErrorAction Stop
     $inspectExitCode = Invoke-PdbInspection $pdbPath
 }
 if ($inspectExitCode -notin 0,3) {
     $details = if (Test-Path -LiteralPath $diagnostics) { (Get-Content -LiteralPath $diagnostics -Raw).Trim() } else { '' }
-    $stage = if ($cachedPdb) { 'Cached PDB identity check' } else { 'Downloaded PDB identity check' }
+    $stage = if ($cachedPdb) { 'Cached DIA identity check' } else { 'Downloaded DIA identity check' }
     throw "$stage failed with exit code $inspectExitCode. $details"
 }
 $inspectionText = Get-Content -LiteralPath $diagnostics -Raw
@@ -83,13 +83,14 @@ if (!$counts.Success) { throw 'PDB inspector did not return its symbol counts.' 
 [pscustomobject]@{
     CandidateSha256 = $hash
     CandidateStatus = [string]$scan.status
-    PdbIdentityVerified = $true
-    PdbGuid = $guid.ToString('B').ToUpperInvariant()
-    PdbAge = $age
+    DiaReportedIdentityMatchesCodeView = $true
+    PdbInfoStreamIdentityVerified = $false
+    CodeViewGuid = $guid.ToString('B').ToUpperInvariant()
+    CodeViewAge = $age
     PdbBytes = (Get-Item -LiteralPath $pdbPath).Length
     MatchingUdtCount = [int]$counts.Groups[1].Value
     MatchingPublicSymbolCount = [int]$counts.Groups[2].Value
     MatchingFunctionCount = [int]$counts.Groups[3].Value
     EvidenceFile = [IO.Path]::GetRelativePath($repoRoot,$evidence)
-    ReviewBoundary = 'public symbol names only; this output does not prove ABI compatibility or add a supported profile'
+    ReviewBoundary = 'DIA-reported identity and public symbol names only; the tool does not parse the canonical PDB Info stream, prove ABI compatibility, or add a supported profile'
 }

@@ -15,7 +15,7 @@
 
 namespace product {
 constexpr wchar_t SettingsKey[]=L"Software\\QuickSettingsThemeTile";
-constexpr wchar_t Version[]=L"0.3.5-native";
+constexpr wchar_t Version[]=L"0.3.6-native";
 constexpr wchar_t ActivePrefix[]=L"Local\\QuickSettingsThemeTile.Active.";
 constexpr wchar_t StopPrefix[]=L"Local\\QuickSettingsThemeProbe.Stop.";
 constexpr wchar_t DllName[]=L"ThemeTile.dll";

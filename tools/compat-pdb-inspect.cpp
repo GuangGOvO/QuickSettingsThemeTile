@@ -125,15 +125,15 @@ int wmain(int argc,wchar_t** argv) {
         hr=session->get_globalScope(global.GetAddressOf());
         if (FAILED(hr) || !global) { std::wcerr<<L"PDB global scope failed: 0x"<<std::hex<<hr<<L'\n'; break; }
         GUID actualGuid{}; DWORD actualAge=0;
-        if (FAILED(global->get_guid(&actualGuid)) || FAILED(global->get_age(&actualAge))) { std::wcerr<<L"PDB identity unavailable\n"; break; }
+        if (FAILED(global->get_guid(&actualGuid)) || FAILED(global->get_age(&actualAge))) { std::wcerr<<L"DIA-reported PDB identity unavailable\n"; break; }
         if (std::memcmp(&actualGuid,&expectedGuid,sizeof(GUID))!=0 || actualAge!=expectedAge) {
             wchar_t actualText[40]{}; StringFromGUID2(actualGuid,actualText,ARRAYSIZE(actualText));
-            std::wcerr<<L"PDB identity mismatch: "<<actualText<<L" age "<<actualAge<<L'\n';
+            std::wcerr<<L"DIA-reported PDB identity mismatch: "<<actualText<<L" age "<<actualAge<<L'\n';
             exitCode=4; break;
         }
         auto filter=std::wstring(argv[5]);
         wchar_t identityText[40]{}; StringFromGUID2(actualGuid,identityText,ARRAYSIZE(identityText));
-        std::wcerr<<L"pdbGuid="<<identityText<<L" pdbAge="<<actualAge<<L'\n';
+        std::wcerr<<L"diaGuid="<<identityText<<L" diaAge="<<actualAge<<L'\n';
         ComPtr<IDiaEnumSymbols> types;
         hr=global->findChildren(SymTagUDT,nullptr,nsNone,types.GetAddressOf());
         if (FAILED(hr) || !types) { std::wcerr<<L"PDB UDT enumeration failed: 0x"<<std::hex<<hr<<L'\n'; break; }

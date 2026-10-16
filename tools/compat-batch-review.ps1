@@ -62,9 +62,12 @@ foreach ($hash in $selectedHashes) {
         sha256 = $hash
         associations = @($record.associations | ForEach-Object { "$($_.WindowsFamily) $($_.ReleaseVersion) $($_.Update)" })
         authenticodeStatus = [string]$record.authenticodeStatus
-        pdbGuid = [string]$record.compatibilityScan.pdbGuid
-        pdbAge = [int]$record.compatibilityScan.pdbAge
-        pdbIdentityVerified = $false
+        codeViewGuid = [string]$record.compatibilityScan.pdbGuid
+        codeViewAge = [int]$record.compatibilityScan.pdbAge
+        diaReportedGuid = ''
+        diaReportedAge = $null
+        diaIdentityMatchesCodeView = $false
+        pdbInfoStreamIdentityVerified = $false
         initializeRva = $null
         initializeIid = $null
         probeStatus = 'not_run'
@@ -108,13 +111,15 @@ foreach ($hash in $selectedHashes) {
         $diagnostics = Join-Path $outRoot "pdb-review-$hash.stderr.txt"
         & $inspector $dia $pdbPath ([string]$scan.pdbGuid) ([string]$scan.pdbAge) 'IQuickActionViewModel' 1> $evidence 2> $diagnostics
         $inspectCode = $LASTEXITCODE
-        if ($inspectCode -notin 0,3) { throw "PDB identity/symbol inspection failed with exit code $inspectCode." }
+        if ($inspectCode -notin 0,3) { throw "DIA identity/symbol inspection failed with exit code $inspectCode." }
         $diagnosticText = Get-Content -Raw -LiteralPath $diagnostics
-        $identity = [regex]::Match($diagnosticText,'pdbGuid=\{(?<guid>[0-9A-Fa-f-]+)\} pdbAge=(?<age>\d+)')
+        $identity = [regex]::Match($diagnosticText,'diaGuid=\{(?<guid>[0-9A-Fa-f-]+)\} diaAge=(?<age>\d+)')
         if (!$identity.Success -or ([guid]$identity.Groups['guid'].Value -ne [guid]$scan.pdbGuid) -or ([int]$identity.Groups['age'].Value -ne [int]$scan.pdbAge)) {
-            throw 'PDB GUID/age did not match the candidate DLL.'
+            throw 'DIA-reported GUID/age did not match the candidate DLL CodeView key.'
         }
-        $result.pdbIdentityVerified = $true
+        $result.diaReportedGuid = ([guid]$identity.Groups['guid'].Value).ToString('B').ToUpperInvariant()
+        $result.diaReportedAge = [int]$identity.Groups['age'].Value
+        $result.diaIdentityMatchesCodeView = $true
 
         $rvaMatches = @(Get-Content -LiteralPath $evidence | ForEach-Object {
             if ($_ -match '^PUBLIC\t.*produce<.*QuickActionViewModel.*IQuickActionViewModel.*>::Initialize\(void\).*\t(?<rva>\d+)$') { [uint32]$Matches.rva }
@@ -136,7 +141,7 @@ foreach ($hash in $selectedHashes) {
             throw "Isolated ABI probe did not pass (exit $probeCode; $($probeData.probeStatus))."
         }
     } catch {
-        $result.failureStage = if (!$result.pdbIdentityVerified) { 'symbol_or_candidate_validation' } elseif (!$result.initializeRva) { 'initialize_symbol' } else { 'isolated_abi_probe' }
+        $result.failureStage = if (!$result.diaIdentityMatchesCodeView) { 'symbol_or_candidate_validation' } elseif (!$result.initializeRva) { 'initialize_symbol' } else { 'isolated_abi_probe' }
         $result.failure = $_.Exception.Message
         if ($result.probeStatus -eq 'not_run') { $result.probeStatus = 'inconclusive' }
     }
@@ -148,7 +153,7 @@ $report = [ordered]@{
     schemaVersion = 1
     generatedAtUtc = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
     sourceSummary = [IO.Path]::GetFileName($summaryFile)
-    boundary = 'Candidate screening only. No profile table or Shell configuration is changed; exact target-build Shell UI acceptance remains separate.'
+    boundary = 'DIA-reported GUID/age is not a parse of the canonical PDB Info stream. Candidate screening only: a direct binary ABI probe is required, no profile table or Shell configuration is changed, and target-build Shell UI acceptance remains separate.'
     results = @($results)
 }
 $reportPath = Join-Path $outRoot 'abi-batch-review.json'
